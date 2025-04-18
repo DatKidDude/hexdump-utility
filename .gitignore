@@ -178,3 +178,6 @@ cython_debug/
 
 # tar files
 *.tar
+
+# ignore my test file
+test.py
