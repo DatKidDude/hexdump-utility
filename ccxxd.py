@@ -8,12 +8,17 @@ class Row:
     ascii_str: str
 
 
-def hexdump(source, group=2):
+def format_chunk(chunk: bytes) -> str:
+    """Reverses byte ordering and returns it as hexadecimal"""
+    return chunk[::-1].hex()
+
+
+def hexdump(source, little_endian=True, group=4):
     # Array to hold the Row object
     rows = []
 
     with open(source, "rb") as file:
-        binary_data = file.read()
+        binary_data = file.read(512)
 
         # Each row contains 16 bytes of data
         size = 16
@@ -24,8 +29,14 @@ def hexdump(source, group=2):
             offset = row
             # Grab 16 bytes at a time
             hex_data = binary_data[row: row + size]
-            # Group the hexdump output by `group` size bytes
-            hex_str = " ".join([hex_data[i: i + group].hex() for i in range(0, len(hex_data), group)])
+            if little_endian:
+                # Reverse the byte groups 
+                hex_pairs = [format_chunk(hex_data[i:i + group]) for i in range(0, len(hex_data), group)]
+                hex_str = " ".join(hex_pairs)
+            else:
+                # Group the hexdump output by `group` size bytes
+                # As long as you slice bytes it stays a byte object 
+                hex_str = " ".join([hex_data[i: i + group].hex() for i in range(0, len(hex_data), group)])
             # Create the ASCII text 
             ascii_str = "".join([chr(i) if 32 <= i <= 126 else "." for i in hex_data])
             # Store the Row objects in an array
