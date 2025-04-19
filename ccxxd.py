@@ -13,12 +13,12 @@ def format_chunk(chunk: bytes) -> str:
     return chunk[::-1].hex()
 
 
-def hexdump(source, little_endian=True, group=4):
+def hexdump(source, little_endian, group):
     # Array to hold the Row object
     rows = []
-
+    
     with open(source, "rb") as file:
-        binary_data = file.read(512)
+        binary_data = file.read()
 
         # Each row contains 16 bytes of data
         size = 16
@@ -47,8 +47,18 @@ def hexdump(source, little_endian=True, group=4):
         print(f"{r.offset:08X}: {r.hex_str} {r.ascii_str}")
 
 def main():
+    parser = argparse.ArgumentParser(
+        prog="ccxxd",
+        description="ccxxd creates a hex dump of a given file"
+    )
 
-    hexdump("files.tar")
+    parser.add_argument("file", help="File to parse")
+    parser.add_argument("-e", "--endian", action="store_true", help="Little endian byte ordering")
+    parser.add_argument("-g", "--group", type=int, default=2, choices=[1,2,4,8], help="Separate the output of every <bytes> bytes (two hex characters or eight bit-digits each) by a whitespace. Defaults to 2")
+    
+    args = parser.parse_args()
+
+    hexdump(args.file, args.endian, args.group)
     
 
 if __name__ == "__main__":
