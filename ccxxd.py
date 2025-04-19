@@ -1,5 +1,6 @@
 import argparse
 from dataclasses import dataclass
+import os
 
 @dataclass
 class Row:
@@ -13,12 +14,12 @@ def format_chunk(chunk: bytes) -> str:
     return chunk[::-1].hex()
 
 
-def hexdump(source, little_endian, group):
+def hexdump(source, little_endian, group, length):
     # Array to hold the Row object
     rows = []
     
     with open(source, "rb") as file:
-        binary_data = file.read()
+        binary_data = file.read(length)
 
         # Each row contains 16 bytes of data
         size = 16
@@ -55,10 +56,17 @@ def main():
     parser.add_argument("file", help="File to parse")
     parser.add_argument("-e", "--endian", action="store_true", help="Little endian byte ordering")
     parser.add_argument("-g", "--group", type=int, default=2, choices=[1,2,4,8], help="Separate the output of every <bytes> bytes (two hex characters or eight bit-digits each) by a whitespace. Defaults to 2")
-    
+    parser.add_argument("-l", "--length", type=int, help="Stop after writing <length> octets.")
+
     args = parser.parse_args()
 
-    hexdump(args.file, args.endian, args.group)
+    # Read up to length bytes 
+    if args.length:
+        hexdump(args.file, args.endian, args.group, args.length)
+    else:
+        # Read the whole file if length is not provided
+        file_size = os.path.getsize(args.file)
+        hexdump(args.file, args.endian, args.group, file_size)
     
 
 if __name__ == "__main__":
