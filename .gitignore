@@ -179,5 +179,7 @@ cython_debug/
 # tar files
 *.tar
 
-# ignore my test file
+# Other stuff
 test.py
+*.hex
+.vscode

@@ -1,6 +1,7 @@
 import argparse
 from dataclasses import dataclass
 import os
+import string
 
 @dataclass
 class Row:
@@ -21,6 +22,7 @@ def valid_cols(value):
         raise argparse.ArgumentTypeError("cols must be between 0 and 255")
 
     return ivalue
+
 
 def hexdump(source, little_endian, group, length, cols, seek_offset):
     # Array to hold the Row object
@@ -56,6 +58,54 @@ def hexdump(source, little_endian, group, length, cols, seek_offset):
     for r in rows:
         print(f"{r.offset:08X}: {r.hex_str} {r.ascii_str}")
 
+
+def hex_to_binary(source):
+    """Converts hexdump back to binary."""
+    filename = source.split(".")[0]
+    
+    with open(source, "rb") as file:
+        binary_data = file.read().decode("utf-8")
+
+    # Split the file on the newlines
+    binary_array = binary_data.splitlines()
+    # 0123456789abcdefABCDEF
+    valid_hex = set(string.hexdigits)
+    
+    hex_bytes = []
+    for line in binary_array:
+        # Skip the offset and strip the extra whitespace
+        rest = line.split(":", 1)[-1].strip()
+        # Split the remaining data on the whitespace
+        parts = rest.split()
+        # Read 2 bytes at a time like "6e64"
+        for part in parts:
+            # Verify the group is valid hex
+            if not all(c in valid_hex for c in part):
+                break
+
+            # Now safe to process in 2-char hex bytes
+            for i in range(0, len(part), 2):
+                # Read one byte at a time "6e" => "64"
+                chunk = part[i:i + 2]
+                # Incomplete chunk, skip
+                if len(chunk) < 2:
+                    continue  
+                # Convert part to ascii
+                val = int(chunk, 16)
+                # Valid ASCII: 32-126
+                # Newline: 10
+                # Carriage return: 13
+                if val in (10, 13) or 32 <= val <= 126:
+                    hex_bytes.append(chunk)
+    
+    # Create the hex bytes
+    data = [bytes.fromhex(i) for i in hex_bytes]
+    
+    # Write the hex bytes to the file
+    with open(filename + ".py", "wb") as file:
+        file.write(b"".join(data))
+    
+        
 def main():
     parser = argparse.ArgumentParser(
         prog="ccxxd",
@@ -68,8 +118,13 @@ def main():
     parser.add_argument("-l", "--length", type=int, help="Stop after writing <length> octets.")
     parser.add_argument("-c", "--cols", type=valid_cols, default=16, help="format <cols> octets per line. Default 16")
     parser.add_argument("-s", "--seek", type=int, default=0, help="Start at <seek> bytes in the file.")
+    parser.add_argument("-r", "--revert", action="store_true", help="reverse operation: convert (or patch) hexdump into binary.")
 
     args = parser.parse_args()
+
+    if args.revert:
+        hex_to_binary(args.file)
+        return
 
     # Read up to length bytes 
     if args.length:
@@ -81,5 +136,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-# -s 96 files.tar
